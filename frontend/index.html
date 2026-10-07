@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Normalidad Gumbel</title>
+<meta name="description" content="Herramienta estadística para evaluación de normalidad, homocedasticidad y correlaciones. Centro de Investigación El Poliedro · Instituto de Estadística Gumbel.">
+<meta name="author" content="Dr. Miguel Angel Castro Mattos">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.min.js"></script>
+
+<style>
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1a2236;
+  --bg-card: #1e293b;
+  --bg-hover: #253352;
+  --bg-input: #0f172a;
+  --border-color: #2d3a52;
+  --border-light: #3b4a6b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #818cf8;
+  --accent-secondary: #06b6d4;
+  --accent-tertiary: #8b5cf6;
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-cite: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HEADER */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.8rem 2rem;
+}
+.header-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.brand { display: flex; align-items: center; gap: 0.8rem; }
+.brand-icon {
+  width: 42px; height: 42px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  box-shadow: var(--shadow-glow);
+}
+.brand-text h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.brand-text .subtitle {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.header-actions { display: flex; align-items: center; gap: 0.5rem; }
+.btn-icon {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 38px; height: 38px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+/* LAYOUT */
+.app-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: grid;
+  grid-template-columns: 380px 1fr 340px;
+  gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 1200px) {
+  .app-container { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  height: fit-content;
+}
+.panel-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ENTRADA DE DATOS */
+.data-input-area { display: flex; flex-direction: column; gap: 0.9rem; }
+.input-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-input);
+  padding: 0.3rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+.input-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.input-tab:hover { color: var(--text-primary); }
+.input-tab.active { background: var(--accent-primary); color: white; }
+
+textarea.data-input {
+  width: 100%;
+  min-height: 260px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.8rem;
+  resize: vertical;
+  transition: border-color 0.2s;
+  line-height: 1.5;
+}
+textarea.data-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+textarea.data-input::placeholder { color: var(--text-muted); font-size: 0.72rem; }
+
+.input-hint { font-size: 0.72rem; color: var(--text-muted); }
+
+.options-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.options-row label {
+  display: flex; align-items: center; gap: 0.4rem; cursor: pointer;
+}
+.options-row select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.options-row select:focus { outline: none; border-color: var(--accent-primary); }
+.options-row input[type="checkbox"] { accent-color: var(--accent-primary); cursor: pointer; }
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  box-shadow: var(--shadow-md);
+  font-family: inherit;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  font-family: inherit;
+}
+.btn-secondary:hover { background: var(--bg-hover); border-color: var(--accent-primary); }
+.btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* Dropzone */
+.dropzone {
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-input);
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent-primary);
+  background: rgba(99, 102, 241, 0.05);
+}
+.dropzone .drop-icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.7; }
+.dropzone .drop-text { font-size: 0.82rem; color: var(--text-secondary); }
+.dropzone .drop-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+/* Opciones avanzadas */
+.advanced-section {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.8rem;
+  margin-top: 0.3rem;
+}
+.advanced-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.4rem 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+.advanced-header:hover { color: var(--text-primary); }
+.advanced-header .chevron { transition: transform 0.2s; font-size: 0.7rem; display: inline-block; }
+.advanced-section.open .advanced-header .chevron { transform: rotate(90deg); }
+.advanced-content {
+  display: none;
+  padding-top: 0.6rem;
+  gap: 0.6rem;
+  flex-direction: column;
+}
+.advanced-section.open .advanced-content { display: flex; }
+.advanced-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.advanced-field label { font-size: 0.72rem; color: var(--text-muted); }
+.advanced-field select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+.advanced-field select:focus { outline: none; border-color: var(--accent-primary); }
+
+/* Ejemplos */
+.examples-dropdown { position: relative; flex: 1; }
+.examples-menu {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 0.3rem;
+  z-index: 50;
+  display: none;
+  box-shadow: var(--shadow-lg);
+}
+.examples-menu.show { display: block; }
+.example-item {
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+.example-item:last-child { border-bottom: none; }
+.example-item:hover { background: var(--bg-hover); }
+.example-item .ex-name { font-weight: 600; color: var(--text-primary); }
+.example-item .ex-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+/* RESULTADOS */
+.results-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 400px;
+}
+.section-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  animation: fadeInUp 0.4s ease-out;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Tabla resumen */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-top: 0.8rem;
+  overflow-x: auto;
+  display: block;
+}
+.summary-table thead th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.7rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.summary-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.summary-table tbody tr:hover { background: var(--bg-hover); }
+.summary-table tbody tr.expanded {
+  background: rgba(99, 102, 241, 0.08);
+  border-left: 3px solid var(--accent-primary);
+}
+.summary-table tbody td {
+  padding: 0.65rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-primary);
+}
+.summary-table tbody td.var-name {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--accent-primary-hover);
+}
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.tag.green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+.tag.yellow { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+.tag.red { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+/* Detalle */
+.detail-panel {
+  margin-top: 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 1.2rem;
+  border: 1px solid var(--border-color);
+  animation: fadeInUp 0.3s ease-out;
+}
+.detail-panel h4 {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 1rem 0 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.detail-panel h4:first-child { margin-top: 0; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.7rem;
+}
+.stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.7rem;
+  transition: all 0.2s;
+}
+.stat-card:hover { border-color: var(--accent-primary); transform: translateY(-2px); }
+.stat-label {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+}
+.stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+.stat-value.success { color: var(--success); }
+.stat-value.warning { color: var(--warning); }
+.stat-value.danger { color: var(--danger); }
+.stat-value.small { font-size: 0.85rem; }
+
+.traffic-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+.traffic-light.green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+.traffic-light.yellow { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+.traffic-light.red { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+.traffic-light .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+/* Tests */
+.tests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+.test-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  position: relative;
+  transition: all 0.2s;
+}
+.test-card:hover { border-color: var(--accent-primary); }
+.test-card.recommended {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+.test-card.recommended::before {
+  content: '⭐ Recomendada';
+  position: absolute;
+  top: -10px; right: 10px;
+  background: var(--gradient-primary);
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 12px;
+}
+.test-name {
+  font-weight: 700;
+  font-size: 0.86rem;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.test-result { font-family: var(--font-mono); font-size: 0.76rem; margin-top: 0.5rem; }
+.test-result .p-value { font-weight: 700; font-size: 0.92rem; }
+.test-result .interpretation { font-size: 0.72rem; margin-top: 0.3rem; color: var(--text-secondary); }
+
+/* Tooltips */
+.tooltip-trigger { position: relative; cursor: help; color: var(--text-muted); font-size: 0.8rem; }
+.tooltip-trigger:hover .tooltip-content { opacity: 1; visibility: visible; transform: translateY(0); }
+.tooltip-content {
+  position: absolute;
+  bottom: 100%; left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.7rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  width: 260px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  line-height: 1.5;
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Tutor */
+.tutor-message {
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.2rem;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.tutor-message.success { border-left-color: var(--success); }
+.tutor-message.warning { border-left-color: var(--warning); }
+.tutor-message.danger { border-left-color: var(--danger); }
+
+/* Gráficos */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+.chart-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.8rem;
+  min-height: 300px;
+}
+.chart-full { grid-column: 1 / -1; }
+
+/* PANEL DERECHO */
+.btn-cite-big {
+  width: 100%;
+  background: var(--gradient-cite);
+  color: white;
+  border: none;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  box-shadow: var(--shadow-lg);
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.2rem;
+}
+.btn-cite-big:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(245, 158, 11, 0.4); }
+.btn-cite-big .cite-icon { font-size: 1.3rem; }
+
+.action-buttons { display: flex; flex-direction: column; gap: 0.55rem; }
+.action-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  font-family: inherit;
+}
+.action-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-primary);
+  transform: translateX(3px);
+}
+.action-btn .action-icon { font-size: 1.05rem; }
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+.toggle-label { font-size: 0.8rem; color: var(--text-secondary); }
+.toggle-switch {
+  position: relative;
+  width: 42px; height: 22px;
+  background: var(--bg-input);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.toggle-switch.active { background: var(--accent-primary); border-color: var(--accent-primary); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-switch.active::after { transform: translateX(20px); }
+
+.author-info {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.author-info .author-name { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.3rem; font-size: 0.78rem; }
+.author-info .version { margin-top: 0.5rem; font-size: 0.68rem; color: var(--text-muted); }
+
+/* MODALES */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  max-width: 800px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.3s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 10;
+}
+.modal-title { font-size: 1.02rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.modal-body { padding: 1.5rem; }
+
+.cite-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.cite-tab {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.cite-tab:hover { color: var(--text-primary); }
+.cite-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+
+.cite-content {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  position: relative;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cite-copy-btn {
+  position: absolute;
+  top: 0.5rem; right: 0.5rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.cite-copy-btn:hover { background: var(--accent-primary-hover); }
+.cite-copy-btn.copied { background: var(--success); }
+
+.biblio-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.biblio-item {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.biblio-item .bib-type {
+  display: inline-block;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  margin-right: 0.5rem;
+  text-transform: uppercase;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+}
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+.empty-state h3 { font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--text-secondary); }
+.empty-state p { font-size: 0.82rem; }
+
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* Status de conexión */
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+.conn-status.online { background: var(--success-bg); color: var(--success); }
+.conn-status.offline { background: var(--danger-bg); color: var(--danger); }
+.visits-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  cursor: help;
+  transition: all 0.2s;
+}
+
+.visits-counter:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+.conn-status .conn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="app-header">
+  <div class="header-content">
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <div class="brand-text">
+        <h1 data-i18n="app_title">Calculadora de Normalidad Gumbel</h1>
+        <div class="subtitle" data-i18n="app_subtitle">Instituto de Estadística Gumbel · Centro de Investigación El Poliedro</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="conn-status offline" id="conn-status" title="Estado de conexión con el motor estadístico">
+        <span class="conn-dot"></span>
+        <span id="conn-label">Verificando...</span>
+      </span>
+	        <span class="visits-counter" id="visits-counter" title="Estadísticas de uso">
+        <span>👁️</span>
+        <span id="visits-count">—</span>
+      </span>
+      <button class="btn-icon" id="btn-biblio" title="Bibliografía">📖</button>
+      <button class="btn-icon" id="btn-save" title="Guardar sesión">💾</button>
+      <button class="btn-icon" id="btn-load" title="Cargar sesión">📂</button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     CONTENEDOR PRINCIPAL
+     ============================================================ -->
+<div class="app-container">
+
+  <!-- ============================================================
+       SIDEBAR IZQUIERDO - ENTRADA DE DATOS
+       ============================================================ -->
+  <aside class="panel">
+    <div class="panel-title">
+      <span>📥</span>
+      <span data-i18n="data_input_title">Entrada de Datos</span>
+    </div>
+
+    <div class="data-input-area">
+
+      <!-- Tabs de modo -->
+      <div class="input-tabs">
+        <button class="input-tab active" data-input-mode="matrix" data-i18n="tab_matrix">Pegar tabla</button>
+        <button class="input-tab" data-input-mode="vector" data-i18n="tab_vector">Pegar vector</button>
+        <button class="input-tab" data-input-mode="file" data-i18n="tab_file">Archivo</button>
+      </div>
+
+      <!-- Modo MATRIZ (default) -->
+      <div id="mode-matrix">
+        <textarea
+          class="data-input"
+          id="data-input-matrix"
+          placeholder="Pega tus datos con encabezados, tal como los copias de Excel o SPSS:&#10;&#10;IMC     Hemoglobina    Calorías&#10;23.5    14.2           1850&#10;24.1    13.8           2100&#10;22.8    14.5           1950&#10;..."></textarea>
+        <div class="input-hint" data-i18n="hint_matrix">💡 Primera fila = nombres de variables. Detecta automáticamente comas, tabulaciones, espacios o punto y coma.</div>
+
+        <div class="options-row mt-1">
+          <label>
+            <input type="checkbox" id="chk-headers" checked>
+            <span data-i18n="opt_headers">Primera fila es encabezado</span>
+          </label>
+          <label>
+            <span data-i18n="opt_sep">Separador:</span>
+            <select id="sel-sep">
+              <option value="auto" data-i18n="sep_auto">Auto-detectar</option>
+              <option value="tab">Tabulación</option>
+              <option value="comma">Coma</option>
+              <option value="semicolon">Punto y coma</option>
+              <option value="space">Espacio</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- Modo VECTOR (oculto por defecto) -->
+      <div id="mode-vector" class="hidden">
+        <textarea
+          class="data-input"
+          id="data-input-vector"
+          placeholder="Pega un solo vector de valores:&#10;&#10;23.5, 24.1, 22.8, 25.3, 23.9, 24.5, 23.1"></textarea>
+        <div class="input-hint" data-i18n="hint_vector">💡 Separa valores con comas, espacios o saltos de línea. Apto para una sola variable.</div>
+
+        <div class="advanced-field mt-1">
+          <label data-i18n="vector_name">Nombre de la variable:</label>
+          <select id="sel-vector-name" style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem 0.6rem; border-radius: var(--radius-sm); font-family: inherit; font-size: 0.78rem;">
+            <option value="Vector">Vector</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Modo ARCHIVO (oculto por defecto) -->
+      <div id="mode-file" class="hidden">
+        <div class="dropzone" id="dropzone">
+          <div class="drop-icon">📁</div>
+          <div class="drop-text" data-i18n="drop_text">Arrastra un archivo CSV o Excel aquí</div>
+          <div class="drop-sub" data-i18n="drop_sub">o haz clic para seleccionar (.csv, .txt, .xlsx, .xls)</div>
+          <input type="file" id="file-input" accept=".csv,.txt,.xlsx,.xls" style="display: none;">
+        </div>
+        <div class="input-hint mt-1" data-i18n="file_hint">💡 El archivo debe tener encabezados en la primera fila.</div>
+        <div id="file-info" class="input-hint" style="color: var(--accent-primary);"></div>
+      </div>
+
+      <!-- Botón Analizar -->
+      <button class="btn-primary" id="btn-analyze">
+        <span>📊</span>
+        <span data-i18n="btn_analyze">Analizar datos</span>
+      </button>
+
+      <!-- Botones secundarios -->
+      <div class="btn-group">
+        <button class="btn-secondary" id="btn-clear" style="flex: 1;">
+          <span>🗑️</span>
+          <span data-i18n="btn_clear">Limpiar</span>
+        </button>
+        <div class="examples-dropdown">
+          <button class="btn-secondary" id="btn-examples" style="width: 100%;">
+            <span>📋</span>
+            <span data-i18n="btn_examples">Ejemplos</span>
+          </button>
+          <div class="examples-menu" id="examples-menu"></div>
+        </div>
+      </div>
+
+      <!-- OPCIONES AVANZADAS (colapsable) -->
+      <div class="advanced-section" id="advanced-section">
+        <div class="advanced-header" id="advanced-toggle">
+          <span>⚙️ <span data-i18n="advanced_title">Opciones avanzadas</span></span>
+          <span class="chevron">▶</span>
+        </div>
+        <div class="advanced-content">
+
+          <div class="advanced-field">
+            <label data-i18n="adv_group_var">Variable de agrupación (para Levene/Bartlett):</label>
+            <select id="sel-group-var">
+              <option value="" data-i18n="adv_none">(ninguna)</option>
+            </select>
+          </div>
+
+          <div class="advanced-field">
+            <label data-i18n="adv_numeric_var">Variable numérica a comparar entre grupos:</label>
+            <select id="sel-numeric-var">
+              <option value="" data-i18n="adv_none2">(ninguna)</option>
+            </select>
+          </div>
+
+          <button class="btn-secondary" id="btn-run-homoscedasticity" style="font-size: 0.75rem;">
+            <span>⚖️</span>
+            <span data-i18n="btn_run_levene">Ejecutar Levene / Bartlett</span>
+          </button>
+
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       PANEL CENTRAL - RESULTADOS
+       ============================================================ -->
+  <main class="results-container" id="results-container">
+    <div class="panel empty-state" id="empty-state">
+      <div class="empty-icon">📊</div>
+      <h3 data-i18n="empty_title">Ingresa tus datos para comenzar</h3>
+      <p data-i18n="empty_desc">Pega una tabla con encabezados (modo matriz) o un vector simple, y pulsa "Analizar datos" para obtener un informe completo de normalidad, homocedasticidad y correlaciones.</p>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       PANEL DERECHO - ACCIONES
+       ============================================================ -->
+  <aside class="panel">
+
+    <!-- BOTÓN DE CITAR DESTACADO -->
+    <button class="btn-cite-big" id="btn-cite">
+      <span class="cite-icon">📚</span>
+      <span data-i18n="btn_cite_big">Citar esta herramienta</span>
+    </button>
+
+    <div class="panel-title">
+      <span>⚡</span>
+      <span data-i18n="actions_title">Acciones</span>
+    </div>
+
+    <div class="action-buttons">
+      <button class="action-btn" id="btn-thesis-summary">
+        <span class="action-icon">📝</span>
+        <span data-i18n="btn_thesis">Resumen para tesis</span>
+      </button>
+
+      <button class="action-btn" id="btn-export-results">
+        <span class="action-icon">📤</span>
+        <span data-i18n="btn_export">Exportar resultados</span>
+      </button>
+
+      <button class="action-btn" id="btn-recommend-test">
+        <span class="action-icon">🎯</span>
+        <span data-i18n="btn_recommend">¿Qué prueba estadística uso?</span>
+      </button>
+
+      <button class="action-btn" id="btn-correlation">
+        <span class="action-icon">🔗</span>
+        <span data-i18n="btn_correlation">Matriz de correlación</span>
+      </button>
+
+      <button class="action-btn" id="btn-mardia">
+        <span class="action-icon">🧬</span>
+        <span data-i18n="btn_mardia">Mardia multivariante</span>
+      </button>
+    </div>
+
+    <!-- Opciones -->
+    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+      <div class="panel-title" style="font-size: 0.72rem; margin-bottom: 0.6rem;">
+        <span>🎛️</span>
+        <span data-i18n="options_title">Opciones</span>
+      </div>
+
+      <div class="toggle-container">
+        <span class="toggle-label" data-i18n="toggle_ci">Intervalos de confianza</span>
+        <div class="toggle-switch active" id="toggle-ci"></div>
+      </div>
+
+      <div class="toggle-container">
+        <span class="toggle-label" data-i18n="toggle_bootstrap">Bootstrap (2000)</span>
+        <div class="toggle-switch active" id="toggle-bootstrap"></div>
+      </div>
+    </div>
+
+    <!-- Autor / Branding -->
+    <div class="author-info">
+      <div class="author-name" data-i18n="author_label">Desarrollado por:</div>
+      <div>Dr. Miguel Angel Castro Mattos</div>
+      <div class="institution">Centro de Investigación El Poliedro</div>
+      <div class="institution">Instituto de Estadística Gumbel</div>
+      <div class="version">v1.0 · 2026</div>
+    </div>
+
+  </aside>
+
+</div>
+
+<!-- ============================================================
+     MODAL: CITAR
+     ============================================================ -->
+<div class="modal-overlay" id="modal-cite">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>📚</span>
+        <span data-i18n="cite_title">Citar esta herramienta</span>
+      </div>
+      <button class="modal-close" data-close-modal>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cite-tabs">
+        <button class="cite-tab active" data-cite-format="apa">APA</button>
+        <button class="cite-tab" data-cite-format="mla">MLA</button>
+        <button class="cite-tab" data-cite-format="chicago">Chicago</button>
+        <button class="cite-tab" data-cite-format="harvard">Harvard</button>
+        <button class="cite-tab" data-cite-format="vancouver">Vancouver</button>
+        <button class="cite-tab" data-cite-format="bibtex">BibTeX</button>
+      </div>
+      <div class="cite-content" id="cite-content"></div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; font-style: italic;">
+        Si usas esta herramienta en tu investigación, por favor cítala.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: BIBLIOGRAFÍA
+     ============================================================ -->
+<div class="modal-overlay" id="modal-biblio">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>📖</span>
+        <span data-i18n="biblio_title">Bibliografía</span>
+      </div>
+      <button class="modal-close" data-close-modal>✕</button>
+    </div>
+    <div class="modal-body">
+      <ul class="biblio-list" id="biblio-list"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: RESUMEN PARA TESIS
+     ============================================================ -->
+<div class="modal-overlay" id="modal-thesis">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>📝</span>
+        <span data-i18n="thesis_title">Resumen para tesis</span>
+      </div>
+      <button class="modal-close" data-close-modal>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cite-tabs">
+        <button class="cite-tab active" data-thesis-format="paragraph">Párrafo corrido</button>
+        <button class="cite-tab" data-thesis-format="structured">Estructurado</button>
+        <button class="cite-tab" data-thesis-format="table">Tabla + párrafo</button>
+      </div>
+      <div class="cite-content" id="thesis-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: RECOMENDACIÓN
+     ============================================================ -->
+<div class="modal-overlay" id="modal-recommend">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>🎯</span>
+        <span data-i18n="recommend_title">¿Qué prueba estadística usar?</span>
+      </div>
+      <button class="modal-close" data-close-modal>✕</button>
+    </div>
+    <div class="modal-body" id="recommend-content"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: CORRELACIÓN
+     ============================================================ -->
+<div class="modal-overlay" id="modal-correlation">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>🔗</span>
+        <span data-i18n="correlation_title">Matriz de correlación</span>
+      </div>
+      <button class="modal-close" data-close-modal>✕</button>
+    </div>
+    <div class="modal-body" id="correlation-content"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: MARDIA
+     ============================================================ -->
+<div class="modal-overlay" id="modal-mardia">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>🧬</span>
+        <span data-i18n="mardia_title">Mardia multivariante</span>
+      </div>
+      <button class="modal-close" data-close-modal>✕</button>
+    </div>
+    <div class="modal-body" id="mardia-content"></div>
+  </div>
+</div>
+
+<!-- Cargar configuración y lógica -->
+<script src="config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
