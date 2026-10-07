@@ -1,0 +1,1011 @@
+/* ============================================================
+   CALCULADORA DE NORMALIDAD GUMBEL - LÓGICA DE APLICACIÓN
+   ============================================================ */
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+const state = {
+  dataset: null,        // { columns: [{name, type, values[]}] }
+  results: null,        // Resultados del análisis
+  inputMode: 'matrix',  // 'matrix' | 'vector' | 'file'
+  useCI: true,
+  useBootstrap: true
+};
+
+// ============================================================
+// i18n (solo español por ahora; estructura lista para quechua)
+// ============================================================
+const i18n = {
+  es: {
+    app_title: 'Calculadora de Normalidad Gumbel',
+    app_subtitle: 'Instituto de Estadística Gumbel · Centro de Investigación El Poliedro',
+    data_input_title: 'Entrada de Datos',
+    tab_matrix: 'Pegar tabla',
+    tab_vector: 'Pegar vector',
+    tab_file: 'Archivo',
+    hint_matrix: '💡 Primera fila = nombres de variables. Detecta comas, tabulaciones o espacios.',
+    hint_vector: '💡 Separa valores con comas, espacios o saltos de línea.',
+    opt_headers: 'Primera fila es encabezado',
+    opt_sep: 'Separador:',
+    sep_auto: 'Auto-detectar',
+    vector_name: 'Nombre de la variable:',
+    drop_text: 'Arrastra un archivo CSV o Excel aquí',
+    drop_sub: 'o haz clic para seleccionar (.csv, .txt, .xlsx)',
+    file_hint: '💡 El archivo debe tener encabezados en la primera fila.',
+    btn_analyze: 'Analizar datos',
+    btn_clear: 'Limpiar',
+    btn_examples: 'Ejemplos',
+    advanced_title: 'Opciones avanzadas',
+    adv_group_var: 'Variable de agrupación:',
+    adv_numeric_var: 'Variable numérica a comparar:',
+    adv_none: '(ninguna)',
+    btn_run_levene: 'Ejecutar Levene / Bartlett',
+    btn_cite_big: 'Citar esta herramienta',
+    actions_title: 'Acciones',
+    btn_thesis: 'Resumen para tesis',
+    btn_export: 'Exportar resultados',
+    btn_recommend: '¿Qué prueba estadística uso?',
+    btn_correlation: 'Matriz de correlación',
+    btn_mardia: 'Mardia multivariante',
+    options_title: 'Opciones',
+    toggle_ci: 'Intervalos de confianza',
+    toggle_bootstrap: 'Bootstrap (2000)',
+    author_label: 'Desarrollado por:',
+    cite_title: 'Citar esta herramienta',
+    biblio_title: 'Bibliografía',
+    thesis_title: 'Resumen para tesis',
+    recommend_title: '¿Qué prueba estadística usar?',
+    correlation_title: 'Matriz de correlación',
+    mardia_title: 'Mardia multivariante',
+    empty_title: 'Ingresa tus datos para comenzar',
+    empty_desc: 'Pega una tabla con encabezados o un vector simple y pulsa "Analizar datos".'
+  }
+};
+
+function t(key) {
+  return (i18n.es && i18n.es[key]) || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n.es[key]) el.textContent = i18n.es[key];
+  });
+}
+
+// ============================================================
+// EJEMPLOS PRECARGADOS (formato matriz)
+// ============================================================
+const examplesData = {
+  imc: {
+    name: 'IMC de estudiantes',
+    desc: '50 valores · distribución aproximadamente normal',
+    matrix: `IMC
+22.1
+23.4
+21.8
+24.2
+22.9
+23.7
+22.5
+24.1
+23.2
+22.8
+23.5
+22.3
+24.0
+23.1
+22.6
+23.8
+22.4
+23.9
+22.7
+23.3
+24.3
+22.2
+23.6
+22.9
+23.4
+22.5
+24.1
+23.0
+22.8
+23.7
+22.4
+23.2
+24.0
+22.6
+23.5
+22.9
+23.8
+22.3
+24.2
+23.1
+22.7
+23.4
+22.5
+23.9
+22.8
+23.6
+22.4
+24.1
+23.2
+22.9`
+  },
+  nutricion: {
+    name: 'Estudio nutricional (3 variables)',
+    desc: '50 sujetos · IMC, Hemoglobina, Calorías',
+    matrix: `IMC,Hemoglobina,Calorias
+22.1,14.2,1850
+23.4,13.8,2100
+21.8,14.5,1950
+24.2,13.5,2200
+22.9,14.1,1900
+23.7,13.9,2050
+22.5,14.3,1980
+24.1,13.7,2150
+23.2,14.0,2000
+22.8,13.6,1920
+23.5,14.4,2080
+22.3,13.3,1970
+24.0,14.1,2180
+23.1,13.8,2030
+22.6,14.2,1940
+23.8,13.5,2120
+22.4,14.0,1990
+23.9,13.9,2200
+22.7,14.3,2010
+23.3,13.4,1960
+24.3,14.1,2090
+22.2,13.7,1930
+23.6,14.2,2160
+22.9,13.8,2040
+23.4,14.0,1980
+22.5,13.6,2110
+24.1,14.4,2020
+23.0,13.5,1950
+22.8,14.1,2170
+23.7,13.9,2000
+22.4,14.3,1940
+23.2,13.4,2080
+24.0,14.2,2030
+22.6,13.8,1970
+23.5,14.0,2140
+22.9,13.6,2010
+23.8,14.1,1990
+22.3,14.4,2190
+24.2,13.9,2050
+23.1,13.7,1960`
+  },
+  proteinas: {
+    name: 'Ingreso proteico (asimetría)',
+    desc: '60 valores · distribución log-normal',
+    matrix: `Proteinas
+45
+52
+48
+65
+55
+70
+58
+80
+62
+75
+50
+68
+56
+72
+60
+85
+63
+78
+54
+66
+59
+73
+61
+82
+57
+71
+64
+76
+53
+69
+62
+74
+58
+81
+65
+77
+55
+70
+63
+79
+51
+67
+60
+73
+56
+75
+64
+78
+59
+72
+61
+83
+57
+71
+66
+76
+54
+68
+62
+74`
+  }
+};
+
+// ============================================================
+// PARSER DE DATOS
+// ============================================================
+function detectSeparator(line) {
+  if (line.includes('\t')) return '\t';
+  if (line.includes(';')) return ';';
+  if (line.includes(',')) return ',';
+  // Si hay múltiples espacios, es separador espacio
+  if (/\s{2,}/.test(line)) return 'multi-space';
+  return /\s+/;
+}
+
+function parseValue(raw) {
+  if (raw === null || raw === undefined) return NaN;
+  const cleaned = String(raw).trim().replace(',', '.');
+  if (cleaned === '' || cleaned === 'NA' || cleaned === 'NaN' || cleaned === '.') return NaN;
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? cleaned : num; // devuelve string si no es número
+}
+
+function parseMatrix(text, hasHeaders = true, sepChoice = 'auto') {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim() !== '');
+  if (lines.length === 0) return null;
+
+  // Detectar separador
+  let sep;
+  if (sepChoice === 'auto') {
+    sep = detectSeparator(lines[0]);
+  } else {
+    sep = {
+      'tab': '\t',
+      'comma': ',',
+      'semicolon': ';',
+      'space': ' '
+    }[sepChoice] || /\s+/;
+  }
+
+  // Split de cada línea
+  const splitLine = (line) => {
+    if (sep === 'multi-space') return line.trim().split(/\s{2,}/);
+    if (sep === ' ') return line.trim().split(/\s+/);
+    return line.split(sep).map(c => c.trim());
+  };
+
+  // Encabezados
+  let headers, dataLines;
+  if (hasHeaders) {
+    headers = splitLine(lines[0]);
+    dataLines = lines.slice(1);
+  } else {
+    const firstRow = splitLine(lines[0]);
+    headers = firstRow.map((_, i) => `Var${i + 1}`);
+    dataLines = lines;
+  }
+
+  // Convertir a columnas
+  const nCols = headers.length;
+  const columns = headers.map(name => ({ name: name.trim() || 'SinNombre', values: [] }));
+
+  dataLines.forEach(line => {
+    const cells = splitLine(line);
+    for (let i = 0; i < nCols; i++) {
+      const v = parseValue(cells[i]);
+      columns[i].values.push(v);
+    }
+  });
+
+  // Detectar tipo de cada columna
+  columns.forEach(col => {
+    const numeric = col.values.filter(v => typeof v === 'number' && !isNaN(v));
+    col.type = (numeric.length / col.values.length) > 0.8 ? 'numeric' : 'categorical';
+  });
+
+  return { columns };
+}
+
+function parseVector(text, name = 'Vector') {
+  const tokens = text.split(/[\s,;\t\n]+/).filter(t => t.trim() !== '');
+  const values = tokens.map(parseValue);
+  return {
+    columns: [{
+      name: name,
+      type: 'numeric',
+      values: values
+    }]
+  };
+}
+
+// ============================================================
+// API: LLAMADAS AL BACKEND
+// ============================================================
+async function checkConnection() {
+  try {
+    const res = await fetch(`${CONFIG.API_BASE_URL}/health`, { method: 'GET' });
+    if (!res.ok) throw new Error('No OK');
+    updateConnectionStatus(true);
+    return true;
+  } catch (e) {
+    updateConnectionStatus(false);
+    return false;
+  }
+}
+
+function updateConnectionStatus(online) {
+  const el = document.getElementById('conn-status');
+  const label = document.getElementById('conn-label');
+  if (online) {
+    el.className = 'conn-status online';
+    label.textContent = 'Conectado';
+  } else {
+    el.className = 'conn-status offline';
+    label.textContent = 'Sin conexión';
+  }
+}
+
+async function apiCall(endpoint, payload) {
+  const res = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`API ${endpoint} → ${res.status}: ${errText}`);
+  }
+  return res.json();
+}
+
+async function analyzeVariableAPI(name, data) {
+  return apiCall('/analyze/variable', { name, data });
+}
+
+async function analyzeMultipleAPI(vars) {
+  return apiCall('/analyze/multiple', { variables: vars });
+}
+
+async function correlationAPI(matrix, method = 'pearson') {
+  return apiCall('/correlation', { matrix, method });
+}
+
+async function leveneAPI(groups) {
+  return apiCall('/levene', { groups });
+}
+
+async function bartlettAPI(groups) {
+  return apiCall('/bartlett', { groups });
+}
+
+async function mardiaAPI(matrix) {
+  return apiCall('/mardia', { matrix });
+}
+
+// ============================================================
+// UTILIDADES DE FORMATO
+// ============================================================
+function fmt(x, decimals = 4) {
+  if (x === null || x === undefined) return '—';
+  if (typeof x !== 'number') return String(x);
+  if (!isFinite(x)) return '∞';
+  return x.toFixed(decimals);
+}
+
+function fmtP(p) {
+  if (p === null || p === undefined) return '—';
+  if (p < 0.001) return '< 0.001';
+  return p.toFixed(3);
+}
+
+function classifyP(p, alpha = 0.05) {
+  if (p === null || p === undefined) return 'gray';
+  return p > alpha ? 'green' : 'red';
+}
+
+// ============================================================
+// UI: EVENT LISTENERS
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  applyTranslations();
+  renderExamplesMenu();
+  renderBibliography();
+  setupInputTabs();
+  setupEventListeners();
+  checkConnection();
+  // Re-verificar conexión cada 30 segundos
+  setInterval(checkConnection, 30000);
+});
+
+function setupInputTabs() {
+  document.querySelectorAll('.input-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const mode = tab.dataset.inputMode;
+      state.inputMode = mode;
+      document.getElementById('mode-matrix').classList.toggle('hidden', mode !== 'matrix');
+      document.getElementById('mode-vector').classList.toggle('hidden', mode !== 'vector');
+      document.getElementById('mode-file').classList.toggle('hidden', mode !== 'file');
+    });
+  });
+}
+
+function setupEventListeners() {
+  // Analizar
+  document.getElementById('btn-analyze').addEventListener('click', handleAnalyze);
+
+  // Limpiar
+  document.getElementById('btn-clear').addEventListener('click', handleClear);
+
+  // Ejemplos
+  document.getElementById('btn-examples').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('examples-menu').classList.toggle('show');
+  });
+  document.addEventListener('click', () => {
+    document.getElementById('examples-menu').classList.remove('show');
+  });
+
+  // Opciones avanzadas
+  document.getElementById('advanced-toggle').addEventListener('click', () => {
+    document.getElementById('advanced-section').classList.toggle('open');
+  });
+
+  // Ejecutar Levene/Bartlett
+  document.getElementById('btn-run-homoscedasticity').addEventListener('click', handleHomoscedasticity);
+
+  // Citar
+  document.getElementById('btn-cite').addEventListener('click', () => {
+    generateCitation('apa');
+    openModal('modal-cite');
+  });
+
+  // Bibliografía
+  document.getElementById('btn-biblio').addEventListener('click', () => openModal('modal-biblio'));
+
+  // Cerrar modales
+  document.querySelectorAll('[data-close-modal]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.target.closest('.modal-overlay').classList.remove('show');
+    });
+  });
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('show');
+    });
+  });
+
+  // Tabs de cita
+  document.querySelectorAll('.cite-tab[data-cite-format]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.cite-tab[data-cite-format]').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      generateCitation(tab.dataset.citeFormat);
+    });
+  });
+
+  // Toggles
+  document.getElementById('toggle-ci').addEventListener('click', function() {
+    this.classList.toggle('active');
+    state.useCI = this.classList.contains('active');
+  });
+  document.getElementById('toggle-bootstrap').addEventListener('click', function() {
+    this.classList.toggle('active');
+    state.useBootstrap = this.classList.contains('active');
+  });
+
+  // Dropzone
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+  });
+}
+
+// ============================================================
+// MANEJO DE ARCHIVOS
+// ============================================================
+function handleFile(file) {
+  const info = document.getElementById('file-info');
+  info.textContent = `📎 Cargando: ${file.name}...`;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      let text;
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        text = XLSX.utils.sheet_to_csv(sheet, { FS: ',' });
+      } else {
+        text = e.target.result;
+      }
+      document.getElementById('data-input-matrix').value = text;
+      info.textContent = `✅ ${file.name} cargado (${text.split('\n').length} líneas)`;
+      // Cambiar a modo matriz
+      document.querySelector('.input-tab[data-input-mode="matrix"]').click();
+    } catch (err) {
+      info.textContent = `❌ Error al leer archivo: ${err.message}`;
+    }
+  };
+
+  if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+// ============================================================
+// ANÁLISIS PRINCIPAL
+// ============================================================
+async function handleAnalyze() {
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span><span>Analizando...</span>';
+
+  try {
+    // Parsear según el modo
+    let dataset;
+    if (state.inputMode === 'matrix' || state.inputMode === 'file') {
+      const text = document.getElementById('data-input-matrix').value;
+      const hasHeaders = document.getElementById('chk-headers').checked;
+      const sepChoice = document.getElementById('sel-sep').value;
+      dataset = parseMatrix(text, hasHeaders, sepChoice);
+    } else {
+      const text = document.getElementById('data-input-vector').value;
+      const name = document.getElementById('sel-vector-name').value || 'Vector';
+      dataset = parseVector(text, name);
+    }
+
+    if (!dataset || dataset.columns.length === 0) {
+      alert('No se detectaron datos válidos. Revisa el formato.');
+      return;
+    }
+
+    state.dataset = dataset;
+
+    // Filtrar columnas numéricas
+    const numericCols = dataset.columns.filter(c => c.type === 'numeric');
+
+    if (numericCols.length === 0) {
+      alert('No se detectaron columnas numéricas.');
+      return;
+    }
+
+    // Llamar API
+    const vars = numericCols.map(c => ({
+      name: c.name,
+      data: c.values.filter(v => typeof v === 'number' && !isNaN(v))
+    }));
+
+    const results = await analyzeMultipleAPI(vars);
+    state.results = results.results;
+
+    // Actualizar dropdowns de variables
+    updateVariableDropdowns(dataset.columns);
+
+    // Renderizar
+    renderSummaryTable(results.results);
+    renderRecommendation();
+
+  } catch (err) {
+    console.error(err);
+    alert('Error al analizar:\n' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>📊</span><span>Analizar datos</span>';
+  }
+}
+
+function handleClear() {
+  document.getElementById('data-input-matrix').value = '';
+  document.getElementById('data-input-vector').value = '';
+  document.getElementById('file-info').textContent = '';
+  document.getElementById('results-container').innerHTML = `
+    <div class="panel empty-state">
+      <div class="empty-icon">📊</div>
+      <h3>${t('empty_title')}</h3>
+      <p>${t('empty_desc')}</p>
+    </div>
+  `;
+  state.dataset = null;
+  state.results = null;
+}
+
+// ============================================================
+// RENDERIZADO
+// ============================================================
+function renderSummaryTable(results) {
+  const container = document.getElementById('results-container');
+
+  const rows = Object.entries(results).map(([name, r]) => {
+    if (r.error) {
+      return `<tr><td class="var-name">${name}</td><td colspan="8" style="color:var(--danger);">${r.error}</td></tr>`;
+    }
+    const d = r.descriptive;
+    const sk = r.skewness_kurtosis;
+    const sw = r.normality.shapiro_wilk;
+    const ad = r.normality.anderson_darling;
+
+    const swColor = sw.error ? 'gray' : classifyP(sw.p);
+    const adColor = ad.error ? 'gray' : classifyP(ad.p);
+
+    return `
+      <tr data-var="${name}">
+        <td class="var-name">${name}</td>
+        <td>${d.n}</td>
+        <td>${fmt(d.mean, 3)}</td>
+        <td>${fmt(d.std, 3)}</td>
+        <td>${fmt(sk.skewness, 3)}</td>
+        <td>${fmt(sk.kurtosis, 3)}</td>
+        <td><span class="tag ${swColor}">${fmtP(sw.p)}</span></td>
+        <td><span class="tag ${adColor}">${fmtP(ad.p)}</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-title"><span>📋</span> Resumen de análisis (${Object.keys(results).length} variables)</div>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Haz clic en una fila para ver el análisis detallado de esa variable.
+      </p>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>N</th>
+            <th>Media</th>
+            <th>DE</th>
+            <th>Asim.</th>
+            <th>Curt.</th>
+            <th>SW (p)</th>
+            <th>AD (p)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div id="detail-container"></div>
+    </div>
+  `;
+
+  // Event listener para expandir
+  container.querySelectorAll('tr[data-var]').forEach(tr => {
+    tr.addEventListener('click', () => toggleDetail(tr.dataset.var, tr));
+  });
+}
+
+function toggleDetail(varName, tr) {
+  const detailContainer = document.getElementById('detail-container');
+  const alreadyExpanded = tr.classList.contains('expanded');
+
+  // Cerrar todos
+  document.querySelectorAll('.summary-table tbody tr').forEach(r => r.classList.remove('expanded'));
+  detailContainer.innerHTML = '';
+
+  if (alreadyExpanded) return;
+
+  tr.classList.add('expanded');
+  const r = state.results[varName];
+  if (!r || r.error) return;
+
+  detailContainer.innerHTML = renderVariableDetail(varName, r);
+}
+
+function renderVariableDetail(name, r) {
+  const d = r.descriptive;
+  const sk = r.skewness_kurtosis;
+  const n = r.normality;
+
+  const renderTest = (key, test, isRec) => {
+    if (test.error) {
+      return `<div class="test-card"><div class="test-name">${key}</div><div style="color:var(--danger);font-size:0.8rem;">${test.error}</div></div>`;
+    }
+    const pColor = classifyP(test.p);
+    const interp = test.p > CONFIG.ALPHA ? '✓ No se rechaza normalidad' : '✗ Se rechaza normalidad';
+    const stat = test.W ?? test.D ?? test.A2 ?? test.K2 ?? test.JB ?? '—';
+    return `
+      <div class="test-card ${isRec ? 'recommended' : ''}">
+        <div class="test-name">${key}</div>
+        <div class="test-result">
+          <div>Estadístico: <strong>${fmt(stat, 4)}</strong></div>
+          <div>p-valor: <span class="p-value ${pColor === 'green' ? 'success' : 'danger'}">${fmtP(test.p)}</span></div>
+          <div class="interpretation">${interp} (α=${CONFIG.ALPHA})</div>
+        </div>
+      </div>
+    `;
+  };
+
+  const swContainsZero = sk.skewness_ci[0] <= 0 && sk.skewness_ci[1] >= 0;
+  const kurtContainsZero = sk.kurtosis_ci[0] <= 0 && sk.kurtosis_ci[1] >= 0;
+  const swColor = swContainsZero ? 'green' : 'yellow';
+  const kurtColor = kurtContainsZero ? 'green' : 'yellow';
+  const swText = swContainsZero ? 'Contiene 0 → compatible con normalidad' : 'No contiene 0 → desviación';
+  const kurtText = kurtContainsZero ? 'Contiene 0 → compatible con normalidad' : 'No contiene 0 → desviación';
+
+  return `
+    <div class="detail-panel">
+      <h4>📊 Estadísticos descriptivos</h4>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">N</div><div class="stat-value">${d.n}</div></div>
+        <div class="stat-card"><div class="stat-label">Media</div><div class="stat-value">${fmt(d.mean, 4)}</div></div>
+        <div class="stat-card"><div class="stat-label">Mediana</div><div class="stat-value">${fmt(d.median, 4)}</div></div>
+        <div class="stat-card"><div class="stat-label">DE</div><div class="stat-value">${fmt(d.std, 4)}</div></div>
+        <div class="stat-card"><div class="stat-label">Varianza</div><div class="stat-value">${fmt(d.variance, 4)}</div></div>
+        <div class="stat-card"><div class="stat-label">Mín</div><div class="stat-value">${fmt(d.min, 4)}</div></div>
+        <div class="stat-card"><div class="stat-label">Máx</div><div class="stat-value">${fmt(d.max, 4)}</div></div>
+        <div class="stat-card"><div class="stat-label">IQR</div><div class="stat-value">${fmt(d.iqr, 4)}</div></div>
+      </div>
+
+      <h4>📐 Asimetría y curtosis (con IC bootstrap 95%)</h4>
+                      <div class="stat-card">
+          <div class="stat-label">Asimetría</div>
+          <div class="stat-value">${fmt(sk.skewness, 4)}</div>
+          <div class="traffic-light ${swColor}"><span class="dot"></span>IC: [${fmt(sk.skewness_ci[0], 3)}, ${fmt(sk.skewness_ci[1], 3)}]</div>
+          <div style="font-size:0.68rem;color:var(--text-muted);margin-top:0.3rem;">${swText}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Curtosis</div>
+          <div class="stat-value">${fmt(sk.kurtosis, 4)}</div>
+          <div class="traffic-light ${kurtColor}"><span class="dot"></span>IC: [${fmt(sk.kurtosis_ci[0], 3)}, ${fmt(sk.kurtosis_ci[1], 3)}]</div>
+          <div style="font-size:0.68rem;color:var(--text-muted);margin-top:0.3rem;">${kurtText}</div>
+          <div style="font-size:0.68rem;color:var(--text-muted);margin-top:0.3rem;">${kurtText}</div>
+        </div>
+
+      <h4>🔬 Pruebas de normalidad</h4>
+      <div class="tests-grid">
+        ${renderTest('Shapiro-Wilk', n.shapiro_wilk, r.recommended_test.test === 'shapiro_wilk')}
+        ${renderTest('Anderson-Darling', n.anderson_darling, r.recommended_test.test === 'anderson_darling')}
+        ${renderTest('Lilliefors (KS)', n.lilliefors, false)}
+        ${renderTest("D'Agostino-Pearson", n.dagostino_pearson, false)}
+        ${renderTest('Jarque-Bera', n.jarque_bera, false)}
+      </div>
+
+      <h4>🎯 Prueba recomendada</h4>
+      <div class="tutor-message">
+        <strong>${r.recommended_test.test.replace(/_/g, ' ').toUpperCase()}</strong><br>
+        ${r.recommended_test.reason}
+      </div>
+    </div>
+  `;
+}
+
+function renderRecommendation() {
+  // Se llenará cuando se pulse el botón
+}
+
+// ============================================================
+// MENÚ DE EJEMPLOS
+// ============================================================
+function renderExamplesMenu() {
+  const menu = document.getElementById('examples-menu');
+  menu.innerHTML = '';
+  Object.entries(examplesData).forEach(([key, ex]) => {
+    const item = document.createElement('div');
+    item.className = 'example-item';
+    item.innerHTML = `
+      <div class="ex-name">${ex.name}</div>
+      <div class="ex-desc">${ex.desc}</div>
+    `;
+    item.addEventListener('click', () => {
+      document.getElementById('data-input-matrix').value = ex.matrix;
+      menu.classList.remove('show');
+      document.querySelector('.input-tab[data-input-mode="matrix"]').click();
+    });
+    menu.appendChild(item);
+  });
+}
+
+// ============================================================
+// BIBLIOGRAFÍA
+// ============================================================
+const bibliography = [
+  { type: 'paper', text: 'Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality (complete samples). Biometrika, 52(3-4), 591-611.' },
+  { type: 'paper', text: 'Anderson, T. W., & Darling, D. A. (1952). Asymptotic theory of certain "goodness-of-fit" criteria based on stochastic processes. Annals of Mathematical Statistics, 23(2), 193-212.' },
+  { type: 'paper', text: "D'Agostino, R. B., & Pearson, E. S. (1973). Tests for departure from normality. Biometrika, 60(3), 613-622." },
+  { type: 'paper', text: 'Lilliefors, H. W. (1967). On the Kolmogorov-Smirnov test for normality with mean and variance unknown. JASA, 62(318), 399-402.' },
+  { type: 'paper', text: 'Levene, H. (1960). Robust tests for equality of variances. In Contributions to Probability and Statistics (pp. 278-292). Stanford University Press.' },
+  { type: 'paper', text: 'Bartlett, M. S. (1937). Properties of sufficiency and statistical tests. Proc. Royal Society A, 160(901), 268-282.' },
+  { type: 'paper', text: 'Royston, P. (1995). Remark AS R94: A remark on Algorithm AS 181: The W-test for normality. Applied Statistics, 44, 547-551.' },
+  { type: 'paper', text: 'Iglewicz, B., & Hoaglin, D. C. (1993). How to detect and handle outliers. ASQC Quality Press.' },
+  { type: 'paper', text: 'Mardia, K. V. (1970). Measures of multivariate skewness and kurtosis with applications. Biometrika, 57(3), 519-530.' },
+  { type: 'book', text: 'Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE Publications.' }
+];
+
+function renderBibliography() {
+  const list = document.getElementById('biblio-list');
+  list.innerHTML = '';
+  bibliography.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'biblio-item';
+    const typeLabel = item.type === 'paper' ? 'Artículo' : 'Libro';
+    li.innerHTML = `<span class="bib-type">${typeLabel}</span>${item.text}`;
+    list.appendChild(li);
+  });
+}
+
+// ============================================================
+// CITACIÓN
+// ============================================================
+function generateCitation(format) {
+  const today = new Date();
+  const accessDate = today.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  const year = CONFIG.TOOL_YEAR;
+  const url = CONFIG.URL;
+  const doi = CONFIG.DOI ? ` https://doi.org/${CONFIG.DOI}` : '';
+
+  const citations = {
+    apa: `${CONFIG.AUTHOR_SHORT} (${year}). ${CONFIG.TOOL_NAME}. ${CONFIG.INSTITUTION}, ${CONFIG.INSTITUTE}. ${url}${doi}`,
+    mla: `${CONFIG.AUTHOR_NAME}. "${CONFIG.TOOL_NAME}." ${CONFIG.INSTITUTION}, ${CONFIG.INSTITUTE}, ${year}, ${url}. Consultado el ${accessDate}.`,
+    chicago: `${CONFIG.AUTHOR_NAME}. ${year}. "${CONFIG.TOOL_NAME}." ${CONFIG.INSTITUTION}, ${CONFIG.INSTITUTE}. ${url}.`,
+    harvard: `${CONFIG.AUTHOR_SHORT} (${year}). ${CONFIG.TOOL_NAME}. ${CONFIG.INSTITUTION}, ${CONFIG.INSTITUTE}. Disponible en: ${url} [Consultado el ${accessDate}].`,
+    vancouver: `${CONFIG.AUTHOR_VANCOUVER}. ${CONFIG.TOOL_NAME} [Internet]. ${CONFIG.INSTITUTION}, ${CONFIG.INSTITUTE}; ${year} [citado el ${accessDate}]. Disponible en: ${url}`,
+    bibtex: `@misc{castro${year}gumbel,
+  author = {Castro Mattos, Miguel Angel},
+  title = {${CONFIG.TOOL_NAME}},
+  year = {${year}},
+  publisher = {${CONFIG.INSTITUTION} - ${CONFIG.INSTITUTE}},
+  url = {${url}},
+  note = {Consultado el ${accessDate}}
+}`
+  };
+
+  const content = document.getElementById('cite-content');
+  content.innerHTML = `
+    ${citations[format]}
+    <button class="cite-copy-btn" onclick="copyCitation(this)">
+      <span>📋</span><span>Copiar</span>
+    </button>
+  `;
+}
+
+function copyCitation(btn) {
+  const text = btn.parentElement.textContent.replace('📋 Copiar', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>✓</span><span>¡Copiado!</span>';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span>📋</span><span>Copiar</span>';
+    }, 2000);
+  });
+}
+
+// ============================================================
+// MODALES
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+// ============================================================
+// VARIABLES DROPDOWN (Levene/Bartlett)
+// ============================================================
+function updateVariableDropdowns(columns) {
+  const groupSel = document.getElementById('sel-group-var');
+  const numSel = document.getElementById('sel-numeric-var');
+  groupSel.innerHTML = '<option value="">(ninguna)</option>';
+  numSel.innerHTML = '<option value="">(ninguna)</option>';
+
+  columns.forEach((col, idx) => {
+    if (col.type === 'categorical') {
+      groupSel.innerHTML += `<option value="${idx}">${col.name}</option>`;
+    } else {
+      numSel.innerHTML += `<option value="${idx}">${col.name}</option>`;
+    }
+  });
+}
+
+// ============================================================
+// HOMOCEDASTICIDAD
+// ============================================================
+async function handleHomoscedasticity() {
+  const groupIdx = document.getElementById('sel-group-var').value;
+  const numIdx = document.getElementById('sel-numeric-var').value;
+
+  if (groupIdx === '' || numIdx === '') {
+    alert('Selecciona una variable de agrupación y una variable numérica.');
+    return;
+  }
+
+  const groupCol = state.dataset.columns[parseInt(groupIdx)];
+  const numCol = state.dataset.columns[parseInt(numIdx)];
+
+  // Agrupar valores
+  const groupsMap = {};
+  groupCol.values.forEach((g, i) => {
+    const nv = numCol.values[i];
+    if (typeof nv !== 'number' || isNaN(nv)) return;
+    if (!groupsMap[g]) groupsMap[g] = [];
+    groupsMap[g].push(nv);
+  });
+
+  const groups = Object.values(groupsMap).filter(g => g.length >= 2);
+  if (groups.length < 2) {
+    alert('Se necesitan al menos 2 grupos con datos numéricos.');
+    return;
+  }
+
+  try {
+    const lev = await leveneAPI(groups);
+    const bar = await bartlettAPI(groups);
+
+    const container = document.getElementById('results-container');
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    card.innerHTML = `
+      <div class="section-header">
+        <div class="section-title"><span>⚖️</span> Homocedasticidad</div>
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">
+        Variable: <strong>${numCol.name}</strong> · Agrupada por: <strong>${groupCol.name}</strong>
+      </p>
+      <div class="tests-grid">
+        <div class="test-card">
+          <div class="test-name">Levene (media)</div>
+          <div class="test-result">
+            <div>W: <strong>${fmt(lev.levene.W, 4)}</strong></div>
+            <div>p: <span class="p-value ${classifyP(lev.levene.p) === 'green' ? 'success' : 'danger'}">${fmtP(lev.levene.p)}</span></div>
+            <div class="interpretation">${lev.levene.p > CONFIG.ALPHA ? '✓ Varianzas iguales' : '✗ Varianzas distintas'}</div>
+          </div>
+        </div>
+        <div class="test-card">
+          <div class="test-name">Brown-Forsythe (mediana)</div>
+          <div class="test-result">
+            <div>W: <strong>${fmt(lev.brown_forsythe.W, 4)}</strong></div>
+            <div>p: <span class="p-value ${classifyP(lev.brown_forsythe.p) === 'green' ? 'success' : 'danger'}">${fmtP(lev.brown_forsythe.p)}</span></div>
+            <div class="interpretation">${lev.brown_forsythe.p > CONFIG.ALPHA ? '✓ Varianzas iguales' : '✗ Varianzas distintas'}</div>
+          </div>
+        </div>
+        <div class="test-card">
+          <div class="test-name">Bartlett</div>
+          <div class="test-result">
+            <div>T: <strong>${fmt(bar.T, 4)}</strong></div>
+            <div>p: <span class="p-value ${classifyP(bar.p) === 'green' ? 'success' : 'danger'}">${fmtP(bar.p)}</span></div>
+            <div class="interpretation">${bar.p > CONFIG.ALPHA ? '✓ Varianzas iguales' : '✗ Varianzas distintas'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  } catch (err) {
+    alert('Error en homocedasticidad: ' + err.message);
+  }
+}
+
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
+console.log(`${CONFIG.TOOL_NAME} v${CONFIG.TOOL_VERSION} - Cargado correctamente.`);
+console.log(`Backend: ${CONFIG.API_BASE_URL}`);
