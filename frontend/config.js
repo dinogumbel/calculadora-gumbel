@@ -6,7 +6,7 @@ const CONFIG = {
   // URL del backend (motor estadístico en Python)
   // En local:    'http://127.0.0.1:8000'
   // En Render:   'https://calculadora-gumbel-api.onrender.com'
-  API_BASE_URL: 'http://127.0.0.1:8000',
+    API_BASE_URL: 'https://calculadora-gumbel.onrender.com',
 
   // Metadatos de la herramienta
   TOOL_NAME: 'Calculadora de Normalidad Gumbel',
